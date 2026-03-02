@@ -7,11 +7,21 @@ def recommend_for_user(user_id, top_n=5):
     anime_components = np.load("anime_components.npy")
     anime_index_to_id = np.load("anime_index_to_id.npy", allow_pickle=True).item()
 
-    # Build reverse mapping
+    # Reverse mapping
     anime_id_to_index = {v: k for k, v in anime_index_to_id.items()}
 
-    # Load dataset
+    # Load datasets
     df = pd.read_parquet("user_watches_filtered.parquet")
+    anime_df = pd.read_csv("animes.csv")
+
+    # Create proper title column
+    anime_df["display_title"] = (
+        anime_df["title_english"]
+        .fillna(anime_df["title"])
+        .fillna(anime_df["title_japanese"])
+    )
+
+    anime_id_to_name = dict(zip(anime_df["anime_id"], anime_df["display_title"]))
 
     # Rebuild user mapping
     user_cat = df["user_id"].astype("category")
@@ -27,29 +37,27 @@ def recommend_for_user(user_id, top_n=5):
     # Get user embedding
     user_vector = user_embeddings[user_index]
 
-    # Compute scores (dot product with all anime)
+    # Compute scores
     scores = np.dot(user_vector, anime_components)
 
-    # Get watched anime
+    # Remove watched anime
     watched_ids = df[df["user_id"] == user_id]["anime_id"].values
-
     watched_indices = [
         anime_id_to_index[a]
         for a in watched_ids
         if a in anime_id_to_index
     ]
-
-    # Remove watched
     scores[watched_indices] = -np.inf
 
     # Get top N
     top_indices = np.argsort(scores)[-top_n:][::-1]
-
     recommended_ids = [anime_index_to_id[i] for i in top_indices]
 
     print(f"\nTop {top_n} recommendations for User {user_id}:\n")
+
     for aid in recommended_ids:
-        print(aid)
+        name = anime_id_to_name.get(aid, "Unknown Title")
+        print(f"{name} (ID: {aid})")
 
 
 if __name__ == "__main__":

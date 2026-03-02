@@ -8,8 +8,17 @@ print("Loading dataset...")
 df = pd.read_parquet("user_watches_filtered.parquet")
 
 # Encode users and anime into indices
-user_ids = df["user_id"].astype("category").cat.codes
-anime_ids = df["anime_id"].astype("category").cat.codes
+user_cat = df["user_id"].astype("category")
+anime_cat = df["anime_id"].astype("category")
+
+user_ids = user_cat.cat.codes
+anime_ids = anime_cat.cat.codes
+
+# Save mappings
+user_mapping = dict(enumerate(user_cat.cat.categories))
+anime_mapping = dict(enumerate(anime_cat.cat.categories))
+
+np.save("anime_index_to_id.npy", anime_mapping)
 
 rows = user_ids
 cols = anime_ids
